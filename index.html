@@ -1,1 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christmas Decoration Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            overflow-x: hidden;
+            color: #333;
+            cursor: default;
+            background: #000;
+        }
+
+        .audio-control {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speaker {
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            transition: all 0.5s ease-in-out;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7));
+            position: relative;
+        }
+
+        .speaker:hover {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
+        }
+
+        .speaker.playing {
+            animation: speakerPulse 2s ease-in-out infinite;
+        }
+
+        .volume-control {
+            display: none;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .volume-control.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            height: 70vh;
+            margin-top: 80px;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+
+        .background-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .decoration-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .decoration-item {
+            position: absolute;
+            pointer-events: auto;
+            cursor: move;
+            transition: transform 0.3s;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transform-origin: center;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+        }
+
+        .decoration-item:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+        }
+
+        .decoration-item.active {
+            animation: pulseGlow 1.5s infinite;
+        }
+
+        .decoration-controls {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 3px 8px;
+            border-radius: 15px;
+            z-index: 10;
+            display: none;
+        }
+
+        .decoration-item:hover .decoration-controls {
+            display: flex;
+        }
+
+        .count-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .count-btn:hover {
+            background: #2980b9;
+            transform: scale(1.1);
+        }
+
+        .count-btn.minus {
+            background: #e74c3c;
+        }
+
+        .count-btn.minus:hover {
+            background: #c0392b;
+        }
+
+        .item-count {
+            color: white;
+            font-weight: bold;
+            padding: 0 8px;
+        }
+
+        .hint-hand {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            z-index: 50;
+            animation: bounceHand 2s infinite, glow 1.5s infinite alternate;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .wardrobe-container {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 200px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .current-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .item-image {
+            width: 150px;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin: 10px 0;
+            transition: all 0.3s;
+            position: relative;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+        }
+
+        .item-image.active {
+            animation: pulseGlow 1.5s infinite;
+            transform: scale(1.1);
+        }
+
+        .item-name {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #ff3333, #ff9966);
+            color: white;
+            text-shadow: 0 0 10px white, 0 0 20px white, 0 0 30px white;
+            animation: fadeIn 0.5s;
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: linear-gradient(45deg, #2ecc71, #3498db);
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-remove {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .item-counter {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 20px;
+            border-radius: 25px;
+        }
+
+        .counter-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #9b59b6;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .counter-btn:hover {
+            background: #8e44ad;
+            transform: scale(1.1);
+        }
+
+        .counter-btn.minus {
+            background: #e74c3c;
+        }
+
+        .counter-btn.minus:hover {
+            background: #c0392b;
+        }
+
+        .counter-display {
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes flyToVideo {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2) translateY(-20px); opacity: 0.7; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        @keyframes pulseGlow {
+            0% { 
+                filter: drop-shadow(0 0 5px gold);
+            }
+            50% { 
+                filter: drop-shadow(0 0 20px gold) drop-shadow(0 0 30px gold);
+            }
+            100% { 
+                filter: drop-shadow(0 0 5px gold);
+            }
+        }
+
+        @keyframes bounceHand {
+            0%, 100% { 
+                transform: translateY(0) rotate(-30deg); 
+            }
+            50% { 
+                transform: translateY(-20px) rotate(-30deg); 
+            }
+        }
+
+        @keyframes glow {
+            from {
+                filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
+            }
+            to {
+                filter: drop-shadow(0 0 15px rgba(255, 255, 255, 1)) drop-shadow(0 0 25px rgba(255, 255, 255, 1));
+            }
+        }
+
+        @keyframes speakerPulse {
+            0% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7));
+            }
+            50% {
+                transform: scale(1.15);
+                filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.9));
+            }
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7));
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .video-container {
+                height: 60vh;
+            }
+            
+            .item-name {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .video-container {
+                height: 50vh;
+                margin-top: 60px;
+            }
+            
+            .item-name {
+                font-size: 20px;
+                padding: 8px 16px;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 18px;
+            }
+            
+            .speaker {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .item-image {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .counter-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+            }
+            
+            .counter-display {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .video-container {
+                height: 40vh;
+                margin-top: 50px;
+            }
+            
+            .item-name {
+                font-size: 18px;
+                padding: 6px 12px;
+            }
+            
+            .wardrobe-container {
+                padding: 10px;
+                min-height: 180px;
+            }
+            
+            .item-image {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .controls {
+                gap: 10px;
+            }
+            
+            .btn {
+                padding: 8px 16px;
+                font-size: 16px;
+            }
+            
+            .counter-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 16px;
+            }
+            
+            .counter-display {
+                font-size: 18px;
+            }
+            
+            .hint-hand {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .video-container {
+                height: 35vh;
+            }
+            
+            .item-name {
+                font-size: 16px;
+            }
+            
+            .btn {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+            
+            .item-image {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="audio-control">
+        <img src="videos/IMG_20251124_151845_148.png" alt="Speaker" class="speaker" id="speaker">
+        <div class="volume-control" id="volumeControl">
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.8">
+        </div>
+    </div>
+
+    <div class="video-container">
+        <video class="background-video" id="backgroundVideo" autoplay muted loop playsinline>
+            <source src=".decorations/VID_20251215_004802_048.mp4" type="video/mp4">
+        </video>
+        <div class="decoration-layer" id="decorationLayer">
+            <!-- Decorations will be added here dynamically -->
+        </div>
+        <img src=".decorations/IMG_20251218_123028_020.png" class="hint-hand" id="hintHand" alt="Decoration hint">
+    </div>
+
+    <div class="wardrobe-container">
+        <div class="current-item">
+            <div class="item-image" id="currentItemImage"></div>
+            <div class="item-name" id="currentItemName"></div>
+            <div class="item-counter">
+                <button class="counter-btn minus" id="decreaseBtn">-</button>
+                <div class="counter-display" id="itemCounter">1</div>
+                <button class="counter-btn" id="increaseBtn">+</button>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="prevBtn">Previous</button>
+            <button class="btn btn-remove" id="removeBtn">Remove All</button>
+            <button class="btn" id="nextBtn">Next</button>
+        </div>
+    </div>
+
+    <script>
+        // Decoration data
+        const decorationItems = [
+            {
+                name: "Icicle Ornament",
+                image: ".decorations/IMG_20251214_180216_915.png",
+                audio: ".decorations/J-20251220122111451Z.mp3",
+                position: { width: "8%" }
+            },
+            {
+                name: "Teardrop Ornament",
+                image: ".decorations/IMG_20251211_005054_690.png",
+                audio: ".decorations/J-20251220122523667Z.mp3",
+                position: { width: "7%" }
+            },
+            {
+                name: "Ball Ornament / Bauble",
+                image: ".decorations/IMG_20251211_004304_540.png",
+                audio: ".decorations/J-20251220122727856Z.mp3",
+                position: { width: "6%" }
+            },
+            {
+                name: "Snowflake Ornament",
+                image: ".decorations/IMG_20251211_004418_509.png",
+                audio: ".decorations/J-20251220122848346Z.mp3",
+                position: { width: "8%" }
+            },
+            {
+                name: "Gingerbread Man Ornament",
+                image: ".decorations/IMG_20251220_000507_146.png",
+                audio: ".decorations/J-20251220123059796Z.mp3",
+                position: { width: "10%" }
+            },
+            {
+                name: "Heart-Shaped Ornament",
+                image: ".decorations/IMG_20251211_005503_616.png",
+                audio: ".decorations/J-20251220175552319Z.mp3",
+                position: { width: "7%" }
+            },
+            {
+                name: "Candy Cane Ornament",
+                image: ".decorations/IMG_20251214_201752_067.png",
+                audio: ".decorations/J-20251220175751503Z.mp3",
+                position: { width: "12%" }
+            },
+            {
+                name: "Angel Figurine",
+                image: ".decorations/IMG_20251211_004230_328.png",
+                audio: ".decorations/J-20251220180540830Z.mp3",
+                position: { width: "15%" }
+            },
+            {
+                name: "Nutcracker Figurine",
+                image: ".decorations/IMG_20251211_093218_373.png",
+                audio: ".decorations/J-20251220180859137Z.mp3",
+                position: { width: "18%" }
+            },
+            {
+                name: "Santa Claus Figurine",
+                image: ".decorations/IMG_20251220_000512_026.png",
+                audio: ".decorations/J-20251220183344550Z.mp3",
+                position: { width: "16%" }
+            },
+            {
+                name: "Ribbon Bow",
+                image: ".decorations/IMG_20251211_093143_419.png",
+                audio: ".decorations/J-20251220183733800Z.mp3",
+                position: { width: "12%" }
+            },
+            {
+                name: "Snowflake Tree Topper",
+                image: ".decorations/IMG_20251211_093113_721.png",
+                audio: ".decorations/J-20251220184002440Z.mp3",
+                position: { width: "25%" }
+            },
+            {
+                name: "Finial Tree Topper",
+                image: ".decorations/IMG_20251216_234123_846.png",
+                audio: ".decorations/J-20251220184143618Z.mp3",
+                position: { width: "20%" }
+            },
+            {
+                name: "Bow Tree Topper",
+                image: ".decorations/IMG_20251218_155159_116.png",
+                audio: ".decorations/J-20251220184357232Z.mp3",
+                position: { width: "22%" }
+            },
+            {
+                name: "Bell Garland",
+                image: ".decorations/IMG_20251214_201245_533.png",
+                audio: ".decorations/J-20251220191319842Z.mp3",
+                position: { width: "30%" }
+            },
+            {
+                name: "Popcorn Curtain Garland",
+                image: ".decorations/IMG_20251215_004926_388.png",
+                audio: ".decorations/J-20251220191507498Z.mp3",
+                position: { width: "35%" }
+            },
+            {
+                name: "Tinsel Garland",
+                image: ".decorations/IMG_20251218_155813_209.png",
+                audio: ".decorations/J-20251220193719152Z.mp3",
+                position: { width: "40%" }
+            },
+            {
+                name: "Christmas Balloon Garland",
+                image: ".decorations/IMG_20251215_155120_152.png",
+                audio: ".decorations/J-20251220193923303Z.mp3",
+                position: { width: "45%" }
+            },
+            {
+                name: "3-Layer Crystal Garland",
+                image: ".decorations/IMG_20251215_015830_622.png",
+                audio: ".decorations/J-20251220194102666Z.mp3",
+                position: { width: "38%" }
+            },
+            {
+                name: "Snowball garland",
+                image: ".decorations/IMG_20251219_234642_825.png",
+                audio: ".decorations/ttsmaker-file-2025-12-20-23-47-15.mp3",
+                position: { width: "32%" }
+            },
+            {
+                name: "Snow Flocked Christmas Wreath",
+                image: ".decorations/IMG_20251211_011505_386.png",
+                audio: ".decorations/ttsmaker-file-2025-12-20-23-52-20.mp3",
+                position: { width: "25%" }
+            },
+            {
+                name: "Christmas Stocking",
+                image: ".decorations/IMG_20251214_203335_239.png",
+                audio: ".decorations/ttsmaker-file-2025-12-20-23-53-52.mp3",
+                position: { width: "20%" }
+            },
+            {
+                name: "Christmas Advent Calendar",
+                image: ".decorations/IMG_20251218_145917_560.png",
+                audio: ".decorations/ttsmaker-file-2025-12-20-23-56-59.mp3",
+                position: { width: "28%" }
+            },
+            {
+                name: "Advent candle",
+                image: ".decorations/InShot_20251219_142925035.png",
+                audio: ".decorations/ttsmaker-file-2025-12-21-0-29-43.mp3",
+                position: { width: "15%" }
+            },
+            {
+                name: "Santa Hat",
+                image: ".decorations/IMG_20251216_231500_180.png",
+                audio: ".decorations/ttsmaker-file-2025-12-21-0-30-56.mp3",
+                position: { width: "18%" }
+            },
+            {
+                name: "Snowflake String Lights",
+                image: ".decorations/InShot_20251215_081253630.png",
+                audio: ".decorations/ttsmaker-file-2025-12-21-0-32-15.mp3",
+                position: { width: "40%" }
+            },
+            {
+                name: "Icicle Lights",
+                image: ".decorations/InShot_20251215_112552383.png",
+                audio: ".decorations/ttsmaker-file-2025-12-21-0-34-30.mp3",
+                position: { width: "42%" }
+            },
+            {
+                name: "Festoon Lights",
+                image: ".decorations/IMG_20251215_102454_415.png",
+                audio: ".decorations/J-20251220203552630Z.mp3",
+                position: { width: "35%" }
+            },
+            {
+                name: "Net Lights",
+                image: ".decorations/InShot_20251215_112737477.png",
+                audio: ".decorations/J-20251220203656820Z.mp3",
+                position: { width: "38%" }
+            },
+            {
+                name: "Fir Fibre-Optic Christmas Tree",
+                image: ".decorations/IMG_20251218_184815_118.png",
+                audio: ".decorations/J-20251220203928432Z.mp3",
+                position: { width: "50%" }
+            },
+            {
+                name: "Foil Fringe Backdrop Curtains",
+                image: ".decorations/IMG_20251219_103223_517.jpg",
+                audio: ".decorations/J-20251220204112216Z.mp3",
+                position: { width: "60%" }
+            },
+            {
+                name: "Christmas Snow Globe Lantern",
+                image: ".decorations/IMG_20251215_000545_246.png",
+                audio: ".decorations/J-20251220204223361Z.mp3",
+                position: { width: "22%" }
+            },
+            {
+                name: "Paper Lantern",
+                image: ".decorations/IMG_20251215_114953_814.png",
+                audio: ".decorations/J-20251220204324773Z.mp3",
+                position: { width: "20%" }
+            },
+            {
+                name: "3D Thundercloud LED Light",
+                image: ".decorations/IMG_20251215_015827_723.png",
+                audio: ".decorations/J-20251220204432232Z.mp3",
+                position: { width: "25%" }
+            },
+            {
+                name: "Christmas Train Set",
+                image: ".decorations/IMG_20251215_152334_926.png",
+                audio: ".decorations/ttsmaker-file-2025-12-21-1-7-34.mp3",
+                position: { width: "45%" }
+            },
+            {
+                name: "LED Reindeer Decoration",
+                image: ".decorations/IMG_20251215_113040_742.png",
+                audio: ".decorations/J-20251221071421013Z.mp3",
+                position: { width: "30%" }
+            },
+            {
+                name: "LED Snowman Decoration",
+                image: ".decorations/IMG_20251218_111555_162.png",
+                audio: ".decorations/J-20251221071532595Z.mp3",
+                position: { width: "28%" }
+            },
+            {
+                name: "Gingerbread House Decoration",
+                image: ".decorations/IMG_20251214_225143_623.png",
+                audio: ".decorations/J-20251221071639048Z.mp3",
+                position: { width: "35%" }
+            },
+            {
+                name: "Disco Ball / Mirror Ball",
+                image: ".decorations/IMG_20251215_152347_760.png",
+                audio: ".decorations/J-20251221071742727Z.mp3",
+                position: { width: "18%" }
+            },
+            {
+                name: "Fireplace",
+                image: ".decorations/IMG_20251219_101224_126.jpg",
+                audio: ".decorations/J-20251221071842000Z.mp3",
+                position: { width: "55%" }
+            },
+            {
+                name: "Snow Blanket",
+                image: ".decorations/InShot_20251220_000717881.png",
+                audio: ".decorations/J-20251221071945508Z.mp3",
+                position: { width: "65%" }
+            }
+        ];
+
+        // State variables
+        let currentItemIndex = 0;
+        let placedDecorations = [];
+        let backgroundMusic = null;
+        let pronunciationAudio = null;
+        let nameTimeout = null;
+        let isPlacingMode = false;
+        let isDragging = false;
+        let dragItem = null;
+        let dragOffset = { x: 0, y: 0 };
+        let itemCounts = {};
+        let currentItemCount = 1;
+
+        // DOM elements
+        const backgroundVideo = document.getElementById('backgroundVideo');
+        const decorationLayer = document.getElementById('decorationLayer');
+        const currentItemImage = document.getElementById('currentItemImage');
+        const currentItemName = document.getElementById('currentItemName');
+        const itemCounter = document.getElementById('itemCounter');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const removeBtn = document.getElementById('removeBtn');
+        const increaseBtn = document.getElementById('increaseBtn');
+        const decreaseBtn = document.getElementById('decreaseBtn');
+        const speaker = document.getElementById('speaker');
+        const volumeControl = document.getElementById('volumeControl');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const hintHand = document.getElementById('hintHand');
+
+        // Initialize item counts
+        decorationItems.forEach((_, index) => {
+            itemCounts[index] = 1;
+        });
+
+        // Initialize
+        function init() {
+            // Setup video
+            backgroundVideo.src = ".decorations/VID_20251215_004802_048.mp4";
+            
+            displayCurrentItem();
+            
+            // Event handlers
+            prevBtn.addEventListener('click', showPreviousItem);
+            nextBtn.addEventListener('click', showNextItem);
+            removeBtn.addEventListener('click', removeAllDecorations);
+            speaker.addEventListener('click', toggleBackgroundMusic);
+            volumeSlider.addEventListener('input', adjustVolume);
+            increaseBtn.addEventListener('click', increaseItemCount);
+            decreaseBtn.addEventListener('click', decreaseItemCount);
+            
+            // Click on video to place decorations
+            backgroundVideo.addEventListener('click', handleVideoClick);
+            
+            // Drag and drop
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            
+            // Show hint hand
+            setTimeout(() => {
+                showHintHand();
+            }, 2000);
+        }
+
+        // Show hint hand animation
+        function showHintHand() {
+            hintHand.style.display = 'block';
+            hintHand.style.top = '60%';
+            hintHand.style.left = '50%';
+            hintHand.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
+            
+            setTimeout(() => {
+                hintHand.style.display = 'none';
+            }, 5000);
+        }
+
+        // Display current decoration item
+        function displayCurrentItem() {
+            const item = decorationItems[currentItemIndex];
+            
+            // Set image
+            currentItemImage.style.backgroundImage = `url('${item.image}')`;
+            
+            // Show name with animation
+            currentItemName.textContent = item.name;
+            currentItemName.style.display = 'block';
+            
+            // Update counter
+            currentItemCount = itemCounts[currentItemIndex];
+            itemCounter.textContent = currentItemCount;
+            
+            // Play pronunciation with higher volume
+            playPronunciation(item.audio);
+            
+            // Start placement mode after audio ends
+            if (pronunciationAudio) {
+                pronunciationAudio.addEventListener('ended', () => {
+                    startPlacementMode();
+                });
+            }
+            
+            // Hide name after 5 seconds
+            clearTimeout(nameTimeout);
+            nameTimeout = setTimeout(() => {
+                currentItemName.style.display = 'none';
+            }, 5000);
+        }
+
+        // Show previous item
+        function showPreviousItem() {
+            currentItemIndex = (currentItemIndex - 1 + decorationItems.length) % decorationItems.length;
+            displayCurrentItem();
+            exitPlacementMode();
+        }
+
+        // Show next item
+        function showNextItem() {
+            currentItemIndex = (currentItemIndex + 1) % decorationItems.length;
+            displayCurrentItem();
+            exitPlacementMode();
+        }
+
+        // Increase item count
+        function increaseItemCount() {
+            const itemIndex = currentItemIndex;
+            itemCounts[itemIndex]++;
+            currentItemCount = itemCounts[itemIndex];
+            itemCounter.textContent = currentItemCount;
+        }
+
+        // Decrease item count
+        function decreaseItemCount() {
+            const itemIndex = currentItemIndex;
+            if (itemCounts[itemIndex] > 1) {
+                itemCounts[itemIndex]--;
+                currentItemCount = itemCounts[itemIndex];
+                itemCounter.textContent = currentItemCount;
+                
+                // Remove the last placed decoration of this type if it exists
+                removeLastDecorationOfType(itemIndex);
+            }
+        }
+
+        // Remove last decoration of specific type
+        function removeLastDecorationOfType(itemIndex) {
+            for (let i = placedDecorations.length - 1; i >= 0; i--) {
+                if (placedDecorations[i].itemIndex === itemIndex) {
+                    placedDecorations[i].element.remove();
+                    placedDecorations.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        // Start placement mode
+        function startPlacementMode() {
+            isPlacingMode = true;
+            
+            // Add active class to current item
+            currentItemImage.classList.add('active');
+            
+            // Show hint hand
+            hintHand.style.display = 'block';
+            hintHand.style.top = '60%';
+            hintHand.style.left = '50%';
+            hintHand.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
+        }
+
+        // Exit placement mode
+        function exitPlacementMode() {
+            isPlacingMode = false;
+            currentItemImage.classList.remove('active');
+            hintHand.style.display = 'none';
+        }
+
+        // Handle video click for placing decorations
+        function handleVideoClick(event) {
+            if (!isPlacingMode) return;
+            
+            const item = decorationItems[currentItemIndex];
+            const videoRect = backgroundVideo.getBoundingClientRect();
+            
+            // Calculate position relative to video
+            const relativeX = event.clientX - videoRect.left;
+            const relativeY = event.clientY - videoRect.top;
+            
+            // Calculate percentages for positioning
+            const percentX = (relativeX / videoRect.width) * 100;
+            const percentY = (relativeY / videoRect.height) * 100;
+            
+            // Place decoration at clicked position
+            placeDecoration(currentItemIndex, percentX, percentY);
+        }
+
+        // Place decoration at specific position
+        function placeDecoration(itemIndex, xPercent, yPercent) {
+            const item = decorationItems[itemIndex];
+            
+            // Create decoration element
+            const decorationElement = document.createElement('div');
+            decorationElement.className = 'decoration-item';
+            decorationElement.style.backgroundImage = `url('${item.image}')`;
+            
+            // Set positioning
+            decorationElement.style.top = `${yPercent}%`;
+            decorationElement.style.left = `${xPercent}%`;
+            decorationElement.style.transform = 'translate(-50%, -50%)';
+            decorationElement.style.width = item.position.width;
+            decorationElement.style.height = 'auto';
+            decorationElement.style.aspectRatio = '1/1';
+            
+            // Create controls container
+            const controlsContainer = document.createElement('div');
+            controlsContainer.className = 'decoration-controls';
+            
+            // Add count buttons
+            const minusBtn = document.createElement('button');
+            minusBtn.className = 'count-btn minus';
+            minusBtn.textContent = '-';
+            minusBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeSpecificDecoration(decorationElement, itemIndex);
+            };
+            
+            const countDisplay = document.createElement('span');
+            countDisplay.className = 'item-count';
+            countDisplay.textContent = '1';
+            
+            controlsContainer.appendChild(minusBtn);
+            controlsContainer.appendChild(countDisplay);
+            decorationElement.appendChild(controlsContainer);
+            
+            // Add event listeners for dragging
+            addDecorationInteractions(decorationElement, itemIndex);
+            
+            // Add to decoration layer
+            decorationLayer.appendChild(decorationElement);
+            
+            // Add to placed decorations list
+            placedDecorations.push({
+                itemIndex: itemIndex,
+                element: decorationElement
+            });
+            
+            // Add animation
+            decorationElement.style.animation = 'flyToVideo 1s forwards';
+        }
+
+        // Add interactions to decoration item
+        function addDecorationInteractions(element, itemIndex) {
+            // Mouse down event for dragging
+            element.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startDragging(element, e);
+            });
+            
+            // Mouse enter/leave for visual feedback
+            element.addEventListener('mouseenter', () => {
+                element.style.cursor = 'move';
+            });
+            
+            element.addEventListener('mouseleave', () => {
+                if (!isDragging) {
+                    element.style.cursor = 'move';
+                }
+            });
+        }
+
+        // Start dragging a decoration
+        function startDragging(element, event) {
+            isDragging = true;
+            dragItem = element;
+            
+            const videoRect = backgroundVideo.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            
+            // Calculate drag offset
+            dragOffset.x = event.clientX - elementRect.left + (elementRect.width / 2) - videoRect.left;
+            dragOffset.y = event.clientY - elementRect.top + (elementRect.height / 2) - videoRect.top;
+            
+            element.style.cursor = 'grabbing';
+        }
+
+        // Handle mouse move for dragging
+        function handleMouseMove(event) {
+            if (isDragging && dragItem) {
+                const videoRect = backgroundVideo.getBoundingClientRect();
+                const relativeX = event.clientX - videoRect.left - dragOffset.x;
+                const relativeY = event.clientY - videoRect.top - dragOffset.y;
+                
+                // Calculate percentages for positioning
+                const percentX = (relativeX / videoRect.width) * 100;
+                const percentY = (relativeY / videoRect.height) * 100;
+                
+                // Update item position
+                dragItem.style.left = `${percentX}%`;
+                dragItem.style.top = `${percentY}%`;
+            }
+        }
+
+        // Handle mouse up
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                if (dragItem) {
+                    dragItem.style.cursor = 'move';
+                    dragItem = null;
+                }
+            }
+        }
+
+        // Remove specific decoration
+        function removeSpecificDecoration(element, itemIndex) {
+            element.remove();
+            
+            // Remove from placed decorations list
+            const index = placedDecorations.findIndex(d => d.element === element);
+            if (index !== -1) {
+                placedDecorations.splice(index, 1);
+            }
+            
+            // Decrease count
+            if (itemCounts[itemIndex] > 1) {
+                itemCounts[itemIndex]--;
+                if (currentItemIndex === itemIndex) {
+                    currentItemCount = itemCounts[itemIndex];
+                    itemCounter.textContent = currentItemCount;
+                }
+            }
+        }
+
+        // Remove all decorations
+        function removeAllDecorations() {
+            // Remove all decoration elements
+            const decorationElements = decorationLayer.querySelectorAll('.decoration-item');
+            decorationElements.forEach(element => {
+                element.remove();
+            });
+            
+            // Clear placed decorations list
+            placedDecorations = [];
+            
+            // Reset all counts to 1
+            decorationItems.forEach((_, index) => {
+                itemCounts[index] = 1;
+            });
+            
+            // Update current count display
+            currentItemCount = 1;
+            itemCounter.textContent = currentItemCount;
+        }
+
+        // Play pronunciation with higher volume
+        function playPronunciation(audioUrl) {
+            // Stop previous pronunciation if playing
+            if (pronunciationAudio) {
+                pronunciationAudio.pause();
+                pronunciationAudio.currentTime = 0;
+            }
+            
+            // Create new audio element with higher volume
+            pronunciationAudio = new Audio(audioUrl);
+            pronunciationAudio.volume = Math.min(volumeSlider.value * 1.5, 1.0);
+            
+            pronunciationAudio.play();
+        }
+
+        // Toggle background music
+        function toggleBackgroundMusic() {
+            if (!backgroundMusic) {
+                // Create and play background music
+                backgroundMusic = new Audio('videos/Untitled (24).mp3');
+                backgroundMusic.loop = true;
+                backgroundMusic.volume = volumeSlider.value;
+                backgroundMusic.play();
+                
+                // Add playing class to speaker for animation
+                speaker.classList.add('playing');
+                
+                // Show volume control
+                volumeControl.classList.add('show');
+            } else {
+                // Stop music
+                backgroundMusic.pause();
+                backgroundMusic = null;
+                
+                // Remove playing class from speaker
+                speaker.classList.remove('playing');
+                
+                // Hide volume control
+                volumeControl.classList.remove('show');
+            }
+        }
+
+        // Adjust volume
+        function adjustVolume() {
+            const volume = volumeSlider.value;
+            
+            if (backgroundMusic) {
+                backgroundMusic.volume = volume;
+            }
+        }
+
+        // Start the application
+        window.addEventListener('DOMContentLoaded', init);
+        
+        // Handle video loading
+        backgroundVideo.addEventListener('loadeddata', () => {
+            console.log('Video loaded successfully');
+        });
+        
+        backgroundVideo.addEventListener('error', () => {
+            console.error('Error loading video');
+            // Fallback background if video fails to load
+            backgroundVideo.style.display = 'none';
+            decorationLayer.style.background = 'radial-gradient(circle, #1a472a 0%, #0c2d1a 100%)';
+        });
+    </script>
+</body>
+</html>
